@@ -3,6 +3,7 @@ package deej
 import (
 	"fmt"
 	"net"
+	"os/exec"
 
 	"github.com/jfreymuth/pulse/proto"
 	"go.uber.org/zap"
@@ -17,6 +18,14 @@ type paSessionFinder struct {
 }
 
 func newSessionFinder(logger *zap.SugaredLogger) (SessionFinder, error) {
+	// Auto-detect PipeWire via wpctl availability
+	if _, err := exec.LookPath("wpctl"); err == nil {
+		logger.Info("PipeWire detected (wpctl found), using direct PipeWire backend")
+		return newSessionFinderPipewire(logger)
+	}
+
+	logger.Info("PipeWire not detected, falling back to PulseAudio backend")
+
 	client, conn, err := proto.Connect("")
 	if err != nil {
 		logger.Warnw("Failed to establish PulseAudio connection", "error", err)

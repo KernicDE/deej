@@ -182,6 +182,11 @@ func (m *sessionMap) sessionMapped(session Session) bool {
 		return true
 	}
 
+	// count explicit device-flagged sessions as mapped (e.g. PipeWire devices)
+	if session.IsDevice() {
+		return true
+	}
+
 	matchFound := false
 
 	// look through the actual mappings

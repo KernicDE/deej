@@ -17,6 +17,7 @@ type Session interface {
 
 	Key() string
 	Release()
+	IsDevice() bool
 }
 
 const (
@@ -33,6 +34,7 @@ type baseSession struct {
 	logger *zap.SugaredLogger
 	system bool
 	master bool
+	device bool // true for device-specific sessions (e.g. "Speakers (Realtek Audio)")
 
 	// used by Key(), needs to be set by child
 	name string
@@ -51,4 +53,8 @@ func (s *baseSession) Key() string {
 	}
 
 	return strings.ToLower(s.name)
+}
+
+func (s *baseSession) IsDevice() bool {
+	return s.device
 }
