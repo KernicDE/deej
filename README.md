@@ -1,5 +1,7 @@
 # deej
 
+> ⚠️ **This is an AI-generated fork.** All Linux-specific improvements (PipeWire backend, Hyprland support, device control) were implemented by an AI assistant (Kimi Code CLI), not by an experienced human developer. Use at your own discretion — the code works and has been tested, but may contain edge cases or suboptimal patterns that a seasoned Go/PipeWire developer would approach differently.
+
 deej is an **open-source hardware volume mixer** for Windows and Linux PCs. It lets you use real-life sliders (like a DJ!) to **seamlessly control the volumes of different apps** (such as your music player, the game you're playing and your voice chat session) without having to stop what you're doing.
 
 **Join the [deej Discord server](https://discord.gg/nf88NJu) if you need help or have any questions!**
