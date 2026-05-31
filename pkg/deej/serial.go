@@ -30,6 +30,8 @@ type SerialIO struct {
 	conn        io.ReadWriteCloser
 
 	lastKnownNumSliders        int
+	pendingSliderCount         int
+	sliderCountMatchCount      int
 	currentSliderPercentValues []float32
 
 	sliderMoveConsumers []chan SliderMoveEvent
@@ -243,9 +245,28 @@ func (sio *SerialIO) handleLine(logger *zap.SugaredLogger, line string) {
 	numSliders := len(splitLine)
 
 	// update our slider count, if needed - this will send slider move events for all
+	// require 3 consecutive lines with the same count before accepting a change,
+	// to protect against corrupt serial data from buffer overruns
 	if numSliders != sio.lastKnownNumSliders {
+		if numSliders == sio.pendingSliderCount {
+			sio.sliderCountMatchCount++
+		} else {
+			sio.pendingSliderCount = numSliders
+			sio.sliderCountMatchCount = 1
+		}
+
+		// need 3 consecutive matches to confirm a slider count change
+		if sio.sliderCountMatchCount < 3 {
+			if sio.deej.Verbose() {
+				logger.Debugw("Ignoring line with unconfirmed slider count", "pending", sio.pendingSliderCount, "matches", sio.sliderCountMatchCount, "line", line)
+			}
+			return
+		}
+
 		logger.Infow("Detected sliders", "amount", numSliders)
 		sio.lastKnownNumSliders = numSliders
+		sio.pendingSliderCount = 0
+		sio.sliderCountMatchCount = 0
 		sio.currentSliderPercentValues = make([]float32, numSliders)
 
 		// reset everything to be an impossible value to force the slider move event later
@@ -261,10 +282,11 @@ func (sio *SerialIO) handleLine(logger *zap.SugaredLogger, line string) {
 		// convert string values to integers ("1023" -> 1023)
 		number, _ := strconv.Atoi(stringValue)
 
-		// turns out the first line could come out dirty sometimes (i.e. "4558|925|41|643|220")
-		// so let's check the first number for correctness just in case
-		if sliderIdx == 0 && number > 1023 {
-			sio.logger.Debugw("Got malformed line from serial, ignoring", "line", line)
+		// reject any value outside the valid ADC range (0-1023)
+		if number > 1023 {
+			if sio.deej.Verbose() {
+				logger.Debugw("Got malformed line from serial, ignoring", "line", line, "badValue", number)
+			}
 			return
 		}
 
