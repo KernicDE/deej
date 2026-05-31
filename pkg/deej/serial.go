@@ -244,6 +244,18 @@ func (sio *SerialIO) handleLine(logger *zap.SugaredLogger, line string) {
 	splitLine := strings.Split(line, "|")
 	numSliders := len(splitLine)
 
+	// pre-validate all values before anything else - reject corrupt lines immediately
+	// so they don't influence slider count detection
+	for _, stringValue := range splitLine {
+		number, _ := strconv.Atoi(stringValue)
+		if number > 1023 {
+			if sio.deej.Verbose() {
+				logger.Debugw("Got malformed line from serial, ignoring", "line", line, "badValue", number)
+			}
+			return
+		}
+	}
+
 	// update our slider count, if needed - this will send slider move events for all
 	// require 3 consecutive lines with the same count before accepting a change,
 	// to protect against corrupt serial data from buffer overruns
@@ -281,14 +293,6 @@ func (sio *SerialIO) handleLine(logger *zap.SugaredLogger, line string) {
 
 		// convert string values to integers ("1023" -> 1023)
 		number, _ := strconv.Atoi(stringValue)
-
-		// reject any value outside the valid ADC range (0-1023)
-		if number > 1023 {
-			if sio.deej.Verbose() {
-				logger.Debugw("Got malformed line from serial, ignoring", "line", line, "badValue", number)
-			}
-			return
-		}
 
 		// map the value from raw to a "dirty" float between 0 and 1 (e.g. 0.15451...)
 		dirtyFloat := float32(number) / 1023.0
